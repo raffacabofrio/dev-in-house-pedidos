@@ -7,24 +7,52 @@ namespace ApiPedidos.Controllers
     public class PedidoController : ControllerBase
     {
         private readonly ILogger<PedidoController> _logger;
+        private Usuario _usuario;
 
         public PedidoController(ILogger<PedidoController> logger)
         {
             _logger = logger;
+
+            _usuario = new Usuario
+            {
+                Nome = "Mauro Martins",
+                Autenticado = true,
+                Autorizado = true
+            };
         }
 
         [HttpGet("Listar")]
         public IActionResult Listar()
         {
-            return Ok(Carrinho.Listar());
+            try
+            {
+                return Ok(Carrinho.Listar(_usuario));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+
         }
 
         [HttpPost("Inserir")]
         public IActionResult Inserir(Produto produto)
         {
-            Carrinho.Inserir(produto);
-            return new ObjectResult(produto) { StatusCode = StatusCodes.Status201Created };
+            try
+            {
+                var pedido = new Pedido
+                {
+                    Produto = produto,
+                    Usuario = _usuario
+                };
 
+                Carrinho.Inserir(pedido);
+                return new ObjectResult(produto) { StatusCode = StatusCodes.Status201Created };
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPut("Alterar")]
@@ -32,7 +60,13 @@ namespace ApiPedidos.Controllers
         {
             try
             {
-                var produtos = Carrinho.Alterar(produto);
+                var pedido = new Pedido
+                {
+                    Produto = produto,
+                    Usuario = _usuario
+                };
+
+                var produtos = Carrinho.Alterar(pedido);
                 return NoContent(); //Sucesso
             }
             catch (Exception ex)
@@ -48,7 +82,13 @@ namespace ApiPedidos.Controllers
         {
             try
             {
-                Carrinho.Excluir(id);
+                var pedido = new Pedido
+                {
+                    Produto = new Produto { Id = id },
+                    Usuario = _usuario
+                };
+
+                Carrinho.Excluir(pedido);
                 return Ok("Produto excluído com sucesso.");
             }
             catch (Exception ex)
@@ -61,52 +101,5 @@ namespace ApiPedidos.Controllers
 
     }
 
-    public class Produto
-    {
-        public int Id { get; set; }
-        public string Description { get; set; } = "";
-    }
-
-    public class Carrinho
-    {
-        private static List<Produto> _produtos { get; set; } = new List<Produto> {
-            new Produto{ Id = 1, Description = "Produto 01" },
-            new Produto{ Id = 2, Description = "Produto 02" },
-            new Produto{ Id = 3, Description = "Produto 03" },
-        };
-
-        public static List<Produto> Listar()
-        {
-            return _produtos;
-        }
-
-        public static Produto Inserir(Produto produto)
-        {
-            _produtos.Add(produto);
-            return produto;
-        }
-
-        public static Produto Alterar(Produto produto)
-        {
-            var index = _produtos.FindIndex(p => p.Id == produto.Id);
-
-            if (index == -1)
-                throw new Exception($"Produto {produto.Id} não encontrado.");
-
-            _produtos[index] = produto;
-
-
-            return produto;
-        }
-
-        public static void Excluir(int id)
-        {
-            var index = _produtos.FindIndex(p => p.Id == id);
-
-            if (index == -1)
-                throw new Exception($"Produto {id} não encontrado.");
-
-            _produtos.RemoveAt(index);
-        }
-    }
+    
 }
